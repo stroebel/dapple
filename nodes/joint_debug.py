@@ -26,7 +26,7 @@ signal.signal(signal.SIGINT, signal_handler)
 class SafeExit(Exception):
     pass
 
-ARMS = {'left_arm','right_arm','both_arms'}
+ARMS = {'left_arm','right_arm','both_arms', 'left_gripper','right_gripper'}
 
 # example: 'left_arm joint 2 3.2' -> Set target joint to target value
 # example: 'both_arms joints 3 23 22 ...' -> Set all joint values
@@ -37,6 +37,12 @@ def parse_command(cmd):
     line = cmd.split()
 
     if line[0].lower() == 'print':
+        sub_cmd = line[1].lower()
+        if sub_cmd == 'groups':
+            return PrintQuery(arm=None, kind='groups')
+        
+        # Since subcommand is handled, reparse as arm
+        # Ugly but fine
         arm = line[1].lower()
         if arm not in ARMS:
             raise ValueError("Unknown arm: %s" % arm)
@@ -118,6 +124,8 @@ def start_control():
         if isinstance(cmd, PrintQuery):
             if cmd.kind == 'joints':
                 print(yummels.get_joint_values(cmd.arm))
+            elif cmd.kind == 'groups':
+                print(yummels.get_groups())
             else:
                 print(yummels.get_current_pose(cmd.arm))
             continue

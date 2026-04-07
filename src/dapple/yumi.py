@@ -32,6 +32,9 @@ class Yumi(object):
 
     def get_current_pose(self, arm):
         return self._groups[arm].get_current_pose()
+    
+    def get_groups(self):
+        return self._groups.keys()
 
     def plan(self, command):
         if isinstance(command, MoveToSingleJointState):
