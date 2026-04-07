@@ -35,7 +35,6 @@ ARMS = {'left_arm','right_arm','both_arms'}
 def parse_command(cmd):
     # Not validating commands. Running them is validation enough for this
     line = cmd.split()
-    rospy.loginfo(line)
 
     if line[0].lower() == 'print':
         arm = line[1].lower()
@@ -53,7 +52,8 @@ def parse_command(cmd):
 
     # handle pose
     if line[1] == 'pose':
-        return yumi.MoveToPoseState(arm=group, pose=[float(v) for v in line[2:]])
+        raise ValueError("Pose is broken for now. ")
+        # return yumi.MoveToPoseState(arm=group, pose=[float(v) for v in line[2:]])
     # handle simple joint command, i.e. full state
     elif line[1] == 'joints':
         return yumi.MoveToJointState(arm=group, joints=[float(v) for v in line[2:]])
@@ -123,7 +123,12 @@ def start_control():
             continue
 
         print("Moving arm: %s" % cmd.arm)
-        yummels.plan_and_execute(cmd)
+        try:
+            yummels.plan_and_execute(cmd)
+        # To capture oob errors
+        except Exception as e:
+            rospy.logerr(e)
+            continue
 
 if __name__ == "__main__":
     try:
