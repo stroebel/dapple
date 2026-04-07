@@ -85,7 +85,12 @@ def start_control():
         if cmd.lower() == "exit":
             raise SafeExit("Shutting down")
         
-        cmd = parse_command(cmd)
+        try:
+            cmd = parse_command(cmd)
+        except (ValueError, IndexError) as e:
+            rospy.logwarn("Invalid command: %s" % e)
+            continue
+
         print("Moving arm: %s" % cmd.arm)
         yummels.plan_and_execute(cmd)
 
