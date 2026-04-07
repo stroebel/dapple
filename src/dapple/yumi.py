@@ -4,6 +4,7 @@ MoveToJointState = namedtuple('MoveToJointState', ['arm','joints'])
 MoveToSingleJointState = namedtuple('MoveToSingleJointState', ['arm', 'joint', 'state'])
 MoveToPoseState = namedtuple('MoveToPoseState', ['arm','pose'])
 
+
 MoveResult = namedtuple('MoveResult', ['success','plan','error', 'arm'])
 
 def ok_result(plan, arm):
@@ -25,6 +26,12 @@ class Yumi(object):
         group = self._groups[result.arm]
         success = group.execute(result.plan, wait=True)
         return ok_result(result.plan, result.arm) if success else err_result("Execution failed")
+
+    def get_joint_values(self, arm):
+        return self._groups[arm].get_current_joint_values()
+
+    def get_current_pose(self, arm):
+        return self._groups[arm].get_current_pose()
 
     def plan(self, command):
         if isinstance(command, MoveToSingleJointState):
@@ -72,4 +79,4 @@ class Yumi(object):
         group.set_pose_target(pose)
         plan =  group.plan()
         # See comment above about Noetic success flags for plans
-        return ok_result(plan) if plan else err_result("Plan failed")
+        return ok_result(plan, arm) if plan else err_result("Plan failed")

@@ -11,6 +11,9 @@ import geometry_msgs.msg
 
 from dapple import yumi
 
+from collections import namedtuple
+
+PrintQuery = namedtuple('PrintQuery', ['arm', 'kind'])
 
 def signal_handler(sig, frame):
     print('\nInterrupt received! Shutting down...')
@@ -28,15 +31,25 @@ ARMS = {'left_arm','right_arm','both_arms'}
 # example: 'left_arm joint 2 3.2' -> Set target joint to target value
 # example: 'both_arms joints 3 23 22 ...' -> Set all joint values
 # example: 'right_arm pose 32 42 ...' -> Set pose value
+# example: 'print left_arm joints' -> Print current joint values
 def parse_command(cmd):
     # Not validating commands. Running them is validation enough for this
     line = cmd.split()
     rospy.loginfo(line)
+
+    if line[0].lower() == 'print':
+        arm = line[1].lower()
+        if arm not in ARMS:
+            raise ValueError("Unknown arm: %s" % arm)
+        kind = line[2].lower()
+        if kind not in ('joints', 'pose'):
+            raise ValueError("Unknown print type: %s (use 'joints' or 'pose')" % kind)
+        return PrintQuery(arm=arm, kind=kind)
+
     group = line[0].lower()
 
     if group not in ARMS:
         raise ValueError("Unknown arm: %s" % group)
-
 
     # handle pose
     if line[1] == 'pose':
@@ -95,11 +108,18 @@ def start_control():
 
         if cmd.lower() == "exit":
             raise SafeExit("Shutting down")
-        
+
         try:
             cmd = parse_command(cmd)
         except (ValueError, IndexError) as e:
             rospy.logwarn("Invalid command: %s" % e)
+            continue
+
+        if isinstance(cmd, PrintQuery):
+            if cmd.kind == 'joints':
+                print(yummels.get_joint_values(cmd.arm))
+            else:
+                print(yummels.get_current_pose(cmd.arm))
             continue
 
         print("Moving arm: %s" % cmd.arm)
