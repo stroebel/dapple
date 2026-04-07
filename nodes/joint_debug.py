@@ -12,8 +12,6 @@ import moveit_commander
 
 from dapple import yumi
 
-
-
 PrintQuery = namedtuple('PrintQuery', ['arm', 'kind'])
 
 def signal_handler(sig, frame):
@@ -98,6 +96,7 @@ def parse_command(cmd):
         raise ValueError("Unknown command")
 
 def start_control():
+
     histfile = os.path.expanduser("~/.dapple_history")
     try:
         readline.read_history_file(histfile)
