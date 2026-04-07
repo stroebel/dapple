@@ -35,10 +35,10 @@ def parse_command(cmd):
 
     # handle pose
     if line[1] == 'pose':
-        return yumi.MoveToPoseState(arm=group, pose=line[1:])
+        return yumi.MoveToPoseState(arm=group, pose=[float(v) for v in line[2:]])
     # handle simple joint command, i.e. full state
     elif line[1] == 'joints':
-        return yumi.MoveToJointState(arm=group, joints=line[1:])
+        return yumi.MoveToJointState(arm=group, joints=[float(v) for v in line[2:]])
 
     elif line[1] == 'joint':
         # Not doing any type verification here. Just don't pass in the wrong thing :)
@@ -78,7 +78,10 @@ def start_control():
         except Exception as e:
             rospy.logerr(e)
             continue
-        
+
+        if not cmd.strip():
+            continue
+
         if cmd.lower() == "exit":
             raise SafeExit("Shutting down")
         
