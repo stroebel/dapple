@@ -25,6 +25,7 @@ class SafeExit(Exception):
 
 # example: 'left_arm joint 2 3.2' -> Set target joint to target value
 # example: 'both_arms joints 3 23 22 ...' -> Set all joint values
+# Note: This cannot currently handle the both_arms joint command properly
 # example: 'right_arm pose 32 42 ...' -> Set pose value
 def parse_command(cmd):
     # Not validating commands. Running them is validation enough for this
