@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
 import sys
+import os
 import signal
+import readline
+import atexit
 from collections import namedtuple
 
 import rospy
 import moveit_commander
-import moveit_msgs.msg
-import geometry_msgs.msg
 
 from dapple import yumi
 
-from collections import namedtuple
+
 
 PrintQuery = namedtuple('PrintQuery', ['arm', 'kind'])
 
@@ -27,11 +28,20 @@ class SafeExit(Exception):
     pass
 
 ARMS = {'left_arm','right_arm','both_arms', 'left_gripper','right_gripper'}
+JOINTS_PER_ARM = 7 # This will be sad when using grippers. Might need to do this dynamically later
 
-# example: 'left_arm joint 2 3.2' -> Set target joint to target value
-# example: 'both_arms joints 3 23 22 ...' -> Set all joint values
-# example: 'right_arm pose 32 42 ...' -> Set pose value
-# example: 'print left_arm joints' -> Print current joint values
+HELP_TEXT = """Commands:
+  <arm> joint <index> <value>       Set a single joint (e.g. left_arm joint 2 3.2)
+  <arm> nudge joint <index> <delta> Nudge a joint by delta (e.g. left_arm nudge joint 2 0.1)
+  <arm> joints <v1> <v2> ...       Set all joint values
+  print <arm> joints               Print current joint values
+  print <arm> pose                 Print current pose
+  print groups                     Print available move groups
+  help                             Show this help
+  exit                             Quit
+
+Arms: left_arm, right_arm, both_arms, left_gripper, right_gripper
+"""
 def parse_command(cmd):
     # Not validating commands. Running them is validation enough for this
     line = cmd.split()
@@ -64,17 +74,23 @@ def parse_command(cmd):
     elif line[1] == 'joints':
         return yumi.MoveToJointState(arm=group, joints=[float(v) for v in line[2:]])
 
-    elif line[1] == 'joint':
-        # Not doing any type verification here. Just don't pass in the wrong thing :)
-        joint_index = int(line[2])
-        # Slightly annoying that I don't have actual joint values here
-        joint_val = float(line[3])
-        # Also ignoring the rest of the line
+    # Checking for joint because we might need to handle pose later
+    elif line[1] == 'nudge' and line[2] == 'joint':
+        joint_index = int(line[3])
+        delta = float(line[4])
 
-        # both_arms need special handling
         if group == 'both_arms':
-            # Because Yumi has 7 joints
-            joint_index = (joint_index, joint_index + 7) # Handle the joint concat of the arms
+            joint_index = (joint_index, joint_index + JOINTS_PER_ARM)
+            delta = (delta, delta)
+
+        return yumi.NudgeJointState(arm=group, joint=joint_index, delta=delta)
+
+    elif line[1] == 'joint':
+        joint_index = int(line[2])
+        joint_val = float(line[3])
+
+        if group == 'both_arms':
+            joint_index = (joint_index, joint_index + JOINTS_PER_ARM)
             joint_val = (joint_val, joint_val)
 
         return yumi.MoveToSingleJointState(arm=group, joint=joint_index, state=joint_val)
@@ -82,6 +98,13 @@ def parse_command(cmd):
         raise ValueError("Unknown command")
 
 def start_control():
+    histfile = os.path.expanduser("~/.dapple_history")
+    try:
+        readline.read_history_file(histfile)
+    except IOError:
+        pass
+    atexit.register(readline.write_history_file, histfile)
+
     moveit_commander.roscpp_initialize(sys.argv)
     rospy.init_node('manual_elbows',
                 anonymous=True)
@@ -100,7 +123,8 @@ def start_control():
 
     yummels = yumi.Yumi(groups)
 
-    print("You can issue commands.\n")
+    print("You can issue commands. Type 'help' for usage.\n")
+    last_cmd = None
     running = True
     while running:
         try:
@@ -110,10 +134,18 @@ def start_control():
             continue
 
         if not cmd.strip():
-            continue
+            if last_cmd is None:
+                continue
+            cmd = last_cmd
+        else:
+            last_cmd = cmd
 
         if cmd.lower() == "exit":
             raise SafeExit("Shutting down")
+
+        if cmd.lower() == "help":
+            print(HELP_TEXT)
+            continue
 
         try:
             cmd = parse_command(cmd)
@@ -133,6 +165,7 @@ def start_control():
         print("Moving arm: %s" % cmd.arm)
         try:
             yummels.plan_and_execute(cmd)
+            print("Result: %s" % yummels.get_joint_values(cmd.arm))
         # To capture oob errors
         except Exception as e:
             rospy.logerr(e)

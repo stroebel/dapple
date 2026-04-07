@@ -2,6 +2,7 @@ from collections import namedtuple
 
 MoveToJointState = namedtuple('MoveToJointState', ['arm','joints'])
 MoveToSingleJointState = namedtuple('MoveToSingleJointState', ['arm', 'joint', 'state'])
+NudgeJointState = namedtuple('NudgeJointState', ['arm', 'joint', 'delta'])
 MoveToPoseState = namedtuple('MoveToPoseState', ['arm','pose'])
 
 
@@ -39,6 +40,8 @@ class Yumi(object):
     def plan(self, command):
         if isinstance(command, MoveToSingleJointState):
             return self._plan_move_joint(command.arm, command.joint, command.state)
+        if isinstance(command, NudgeJointState):
+            return self._plan_nudge_joint(command.arm, command.joint, command.delta)
         if isinstance(command, MoveToJointState):
             return self._plan_move_joints(command.arm, command.joints)
         elif isinstance(command, MoveToPoseState):
@@ -61,6 +64,21 @@ class Yumi(object):
             joints[joint[1]] = state[1]
         else:
             joints[joint] = state
+
+        group.set_joint_value_target(joints)
+        plan = group.plan()
+
+        return ok_result(plan, arm) if plan else err_result("Plan failed")
+
+    def _plan_nudge_joint(self, arm, joint, delta):
+        group = self._groups[arm]
+        joints = group.get_current_joint_values()
+
+        if arm == 'both_arms':
+            joints[joint[0]] += delta[0]
+            joints[joint[1]] += delta[1]
+        else:
+            joints[joint] += delta
 
         group.set_joint_value_target(joints)
         plan = group.plan()
