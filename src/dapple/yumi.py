@@ -42,8 +42,16 @@ class Yumi(object):
     def _plan_move_joint(self, arm, joint, state):
         group = self._groups[arm]
         joints = group.get_current_joint_values()
-        joints[joint] = state
-        print(joints)
+
+        # both_arms need special handling
+        if arm == 'both_arms':
+            # joint _should_ be an iterable
+            # state _should_ be an iterable
+            joints[joint[0]] = state[0]
+            joints[joint[1]] = state[1]
+        else:
+            joints[joint] = state
+
         group.set_joint_value_target(joints)
         plan = group.plan()
 
@@ -65,33 +73,3 @@ class Yumi(object):
         plan =  group.plan()
         # See comment above about Noetic success flags for plans
         return ok_result(plan) if plan else err_result("Plan failed")
-
-
-def go_neutral(yum):
-    left_neutral = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    right_neutral = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-    neutral = [
-        MoveToJointState(arm='left_arm', joints=left_neutral)
-        , MoveToJointState(arm='right_arm',joints=right_neutral)
-    ]
-
-    return [yum.plan_and_execute(cmd) for cmd in neutral]
-
-
-def go_crab_mode(yum):
-    left_neutral = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    right_neutral = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-    left_out = [0.0, -1.2, 0.0, 0.0, 0.0, 0.0, 0.0]
-    right_out = [0.0, -1.2, 0.0, 0.0, 0.0, 0.0, 0.0]
-
-    crab_mode = [
-        MoveToJointState(arm='left_arm',joints=left_neutral),
-        MoveToJointState(arm='right_arm', joints=right_neutral),
-        MoveToJointState(arm='left_arm', joints=left_out),
-        MoveToJointState(arm='right_arm', joints=right_out)
-    ] * 3
-
-    results = [yum.plan_and_execute(cmd) for cmd in crab_mode]
-    return results

@@ -52,6 +52,12 @@ def parse_command(cmd):
         joint_val = float(line[3])
         # Also ignoring the rest of the line
 
+        # both_arms need special handling
+        if group == 'both_arms':
+            # Because Yumi has 7 joints
+            joint_index = (joint_index, joint_index + 7) # Handle the joint concat of the arms
+            joint_val = (joint_val, joint_val)
+
         return yumi.MoveToSingleJointState(arm=group, joint=joint_index, state=joint_val)
     else:
         raise ValueError("Unknown command")
