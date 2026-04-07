@@ -111,7 +111,6 @@ def start_control():
 
     try:
         robot = moveit_commander.RobotCommander()
-        scene = moveit_commander.PlanningSceneInterface()
     except Exception as e:
         rospy.logerr("Failed to set up robot and scene. Is yumi_launch running?")
         rospy.logerr(e)
